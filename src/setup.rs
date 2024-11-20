@@ -1,12 +1,12 @@
 use crate::{
-    config::height_color,
+    config::{height_color, INITIAL_HEIGHT},
     types::{Board, Cell},
 };
 use bevy::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
 
-const GRID_SIZE: usize = 32;
+const GRID_SIZE: usize = 100;
 
 fn mark_cell_height(
     board: &mut Board,
@@ -16,22 +16,29 @@ fn mark_cell_height(
     y: u32,
     height: i32,
 ) {
-    marked[x as usize][y as usize] = true;
-    board.0[x as usize][y as usize].height = height + 20;
     for dx in -1..2 as i32 {
         for dy in -1..2 as i32 {
-            if dx == 0 && dy == 0 {
-                continue;
-            }
             let new_x = x as i32 + dx;
             let new_y = y as i32 + dy;
+            if new_x < 0 || new_x >= GRID_SIZE as i32 || new_y < 0 || new_y >= GRID_SIZE as i32 {
+                continue;
+            }
+            if marked[new_x as usize][new_y as usize] {
+                continue;
+            }
+
             let mut new_height = height + height_diff_map[x as usize][y as usize];
-            if new_height < -4 {
-                new_height = -4;
+            if dx == 0 && dy == 0 {
+                new_height = height;
             }
-            if new_height > 4 {
-                new_height = 4;
-            }
+            marked[x as usize][y as usize] = true;
+            board.0[x as usize][y as usize].height = new_height + INITIAL_HEIGHT;
+        }
+    }
+    for dx in -1..2 as i32 {
+        for dy in -1..2 as i32 {
+            let new_x = x as i32 + dx;
+            let new_y = y as i32 + dy;
             if new_x < 0 || new_x >= GRID_SIZE as i32 || new_y < 0 || new_y >= GRID_SIZE as i32 {
                 continue;
             }
@@ -44,7 +51,7 @@ fn mark_cell_height(
                 height_diff_map,
                 new_x as u32,
                 new_y as u32,
-                new_height,
+                height,
             );
         }
     }

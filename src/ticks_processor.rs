@@ -20,7 +20,7 @@ pub fn rotate_camera(
     let mut transform = query.single_mut();
 
     if !unsafe { ROTATED } {
-        transform.rotate_around(Vec3::ZERO, Quat::from_rotation_x(-0.4));
+        transform.rotate_around(Vec3::ZERO, Quat::from_rotation_x(-0.1));
         unsafe { ROTATED = true };
     }
 
