@@ -33,40 +33,24 @@ fn mark_cell_height(
     let mut new_x;
     let mut new_y;
     let mut new_height;
-    for (dy, dx) in STEPS {
-        new_x = x as i32 + dx;
-        new_y = y as i32 + dy;
-        if new_x < 0 || new_x >= GRID_SIZE as i32 || new_y < 0 || new_y >= GRID_SIZE as i32 {
-            continue;
+    let mut stack: Vec<(u32, u32, i32)> = vec![];
+    stack.push((x, y, height));
+    while !stack.is_empty() {
+        let (x, y, height) = stack.pop().unwrap();
+        for (dy, dx) in STEPS {
+            new_x = x as i32 + dx;
+            new_y = y as i32 + dy;
+            if new_x < 0 || new_x >= GRID_SIZE as i32 || new_y < 0 || new_y >= GRID_SIZE as i32 {
+                continue;
+            }
+            if marked[new_x as usize][new_y as usize] {
+                continue;
+            }
+            new_height = height + height_diff_map[new_x as usize][new_y as usize];
+            board.0[new_x as usize][new_y as usize].height = new_height + INITIAL_HEIGHT;
+            marked[new_x as usize][new_y as usize] = true;
+            stack.push((new_x as u32, new_y as u32, new_height));
         }
-        if marked[new_x as usize][new_y as usize] {
-            continue;
-        }
-
-        new_height = height + height_diff_map[new_x as usize][new_y as usize];
-        board.0[new_x as usize][new_y as usize].height = new_height + INITIAL_HEIGHT;
-    }
-
-    marked[x as usize][y as usize] = true;
-
-    for (dy, dx) in STEPS {
-        new_x = x as i32 + dx;
-        new_y = y as i32 + dy;
-        if new_x < 0 || new_x >= GRID_SIZE as i32 || new_y < 0 || new_y >= GRID_SIZE as i32 {
-            continue;
-        }
-        if marked[new_x as usize][new_y as usize] {
-            continue;
-        }
-        new_height = height + height_diff_map[new_x as usize][new_y as usize];
-        mark_cell_height(
-            board,
-            marked,
-            height_diff_map,
-            new_x as u32,
-            new_y as u32,
-            new_height,
-        );
     }
 }
 
@@ -87,7 +71,7 @@ pub fn create_board() -> Board {
             } else if rand_cent > 990 {
                 height_diff = 1;
             }
-            // let height_diff = (rand::random::<u32>() % 3) as i32 - 1;
+
             row.push(height_diff);
             row_marked.push(false);
             row_cell.push(Cell::default());
@@ -129,7 +113,6 @@ pub fn create_board() -> Board {
 pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let board = create_board();
 
-    // light
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_translation(Vec3::ONE).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
@@ -155,7 +138,25 @@ pub fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     },));
 }
 
+fn height_color_vec(height: i32, max_height: i32, min_height: i32, vertex: f32) -> Vec4 {
+    let normalized = (height - min_height) as f32 / (max_height - min_height) as f32;
+    return Vec4::new(normalized, 0.0, vertex / 4.0, 0.0);
+}
+
 fn create_terrain_mesh(board: &Board) -> Mesh {
+    let mut max_height = 0;
+    let mut min_height = 0;
+    for x in 0..GRID_SIZE {
+        for y in 0..GRID_SIZE {
+            if board.0[x][y].height > max_height {
+                max_height = board.0[x][y].height;
+            }
+            if board.0[x][y].height < min_height {
+                min_height = board.0[x][y].height;
+            }
+        }
+    }
+
     let mut triangles: Vec<Vec3> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
     let mut colors: Vec<Vec4> = Vec::new();
@@ -174,24 +175,16 @@ fn create_terrain_mesh(board: &Board) -> Mesh {
             indices.append(&mut vec![index + 2, index + 1, index]);
             indices.append(&mut vec![index + 2, index + 3, index + 1]);
 
-            // colors.append(&mut vec![
-            //     height_color_vec(board.0[x][y].height),
-            //     height_color_vec(board.0[x + 1][y].height),
-            //     height_color_vec(board.0[x][y + 1].height),
-            //     height_color_vec(board.0[x + 1][y + 1].height),
-            // ]);
             colors.append(&mut vec![
-                Vec4::new(0.3, 0.0, 0.0, 1.0),
-                Vec4::new(0.5, 0.0, 0.0, 1.0),
-                Vec4::new(0.8, 0.0, 0.0, 1.0),
-                Vec4::new(1.0, 0.0, 0.0, 1.0),
+                height_color_vec(board.0[x][y].height, max_height, min_height, 1.0),
+                height_color_vec(board.0[x + 1][y].height, max_height, min_height, 2.0),
+                height_color_vec(board.0[x][y + 1].height, max_height, min_height, 3.0),
+                height_color_vec(board.0[x + 1][y + 1].height, max_height, min_height, 4.0),
             ]);
 
             index += 4;
         }
     }
-
-    // let mesh_size = Vec3::new(15.0, 15.0, 15.0);
 
     let mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -200,7 +193,7 @@ fn create_terrain_mesh(board: &Board) -> Mesh {
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, triangles)
     .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
     .with_inserted_indices(Indices::U32(indices));
-    // .scaled_by(mesh_size);
+
     return mesh;
 }
 
