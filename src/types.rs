@@ -1,4 +1,4 @@
-use bevy::prelude::{Resource, Timer};
+use bevy::prelude::Resource;
 
 pub struct Cell {
     pub height: i32,
@@ -12,9 +12,3 @@ impl Default for Cell {
 
 #[derive(Resource)]
 pub struct Board(pub Vec<Vec<Cell>>);
-
-#[derive(Resource)]
-pub struct FrameTimer(pub Timer);
-
-#[derive(Resource)]
-pub struct RotateTimer(pub Timer);
